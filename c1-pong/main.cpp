@@ -38,7 +38,7 @@ void process_input(AppState* as) {
 void update_game(AppState* as) {
     as->game_state.ball.x += GAME_SPEED * as->delta_time;
 
-    if ()
+    
 
     SDL_SetRenderDrawColor(as->renderer, 255, 255, 255, 255);
     SDL_RenderFillRect(as->renderer, &as->game_state.left_paddle);
