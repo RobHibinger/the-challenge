@@ -3,6 +3,7 @@
 #include <iostream>
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_main.h"
+#include <random>
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
@@ -22,6 +23,8 @@ struct GameState {
     GameObject left_paddle;
     GameObject right_paddle;
     GameObject ball;
+    float timer = 0.0f;
+    float direction = 1.0f;
 
     static GameState DefaultGameState() {
         float paddle_width = 20.0f;
@@ -87,7 +90,18 @@ bool is_colliding_aabb(const GameObject& o1, const GameObject& o2) {
         o1.rect.y + o1.rect.h > o2.rect.y;
 }
 
+bool is_out_of_bounds(const GameObject& o) {
+    return o.rect.y < 0 || o.rect.y + o.rect.h > WINDOW_HEIGHT;
+}
+
 void update_game(AppState* as) {
+    as->game_state.timer += as->delta_time;
+
+    if (as->game_state.timer > 1.5f) {
+        as->game_state.timer = 0;
+        as->game_state.direction *= -1.0f;
+    }
+
     float right_paddle_ball_diff = as->game_state.right_paddle.rect.y + as->game_state.right_paddle.rect.h / 2 - as->game_state.ball.rect.y + as->game_state.ball.rect.h / 2;
     as->game_state.right_paddle.vel.y = 0;
     if (right_paddle_ball_diff != 0) {
@@ -95,19 +109,20 @@ void update_game(AppState* as) {
     }
 
     if (as->game_state.ball.rect.y <= 0 || as->game_state.ball.rect.y + as->game_state.ball.rect.h >= WINDOW_HEIGHT) {
-        as->game_state.ball.vel.y = -1.0f * as->game_state.ball.vel.y;
+        as->game_state.ball.vel.y *= -1.0f;
     }
 
     if (is_colliding_aabb(as->game_state.right_paddle, as->game_state.ball) || is_colliding_aabb(as->game_state.left_paddle, as->game_state.ball)) {
-        as->game_state.ball.vel.x = -1.0f * as->game_state.ball.vel.x;
+        as->game_state.ball.vel.x *= -1.0f;
     }
 
     if (as->game_state.ball.rect.x < 0 || as->game_state.ball.rect.x > WINDOW_WIDTH) {
         as->game_state = GameState::DefaultGameState();
     }
 
+    
     as->game_state.left_paddle.rect.y += GAME_SPEED * as->delta_time * as->game_state.left_paddle.vel.y * 2.0f;
-    as->game_state.right_paddle.rect.y += GAME_SPEED * as->delta_time * as->game_state.right_paddle.vel.y * 1.0f;
+    as->game_state.right_paddle.rect.y += GAME_SPEED * as->delta_time * as->game_state.right_paddle.vel.y * 2.0f * as->game_state.direction;
     as->game_state.ball.rect.x += GAME_SPEED * as->delta_time * as->game_state.ball.vel.x;
     as->game_state.ball.rect.y += GAME_SPEED * as->delta_time * as->game_state.ball.vel.y;
 
@@ -145,11 +160,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     as->delta_time = (as->current_ticks - as->previous_ticks) / 1e9f;
     as->previous_ticks = as->current_ticks;
 
-    process_input(as);
-
     SDL_SetRenderDrawColor(as->renderer, 0, 0, 0, 255);
     SDL_RenderClear(as->renderer);
 
+    process_input(as);
     update_game(as);
 
     SDL_RenderPresent(as->renderer);
