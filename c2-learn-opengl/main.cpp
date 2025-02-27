@@ -8,12 +8,84 @@
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
 
+const char* vertexShaderSource = "#version 330 core\n"
+    "layout (location = 0) in vec3 aPos;\n"
+    "void main()\n"
+    "{\n"
+    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "}\0";
+
+const char* fragmentShaderSource = "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n {\n"
+    "FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "}";
+
 typedef struct AppState {
     SDL_Window* window;
     SDL_GLContext glContext;
     SDL_AppResult app_quit = SDL_APP_CONTINUE;
     int window_width = WINDOW_WIDTH, window_height = WINDOW_HEIGHT;
 } AppState;
+
+void createTriangle() {
+    int verticies[] = {
+        0.0f, 0.5f, 0.0f,
+       // -0.5f, -0.5f, 0.0f,
+       // 0.5f, -0.5f, 0.0f
+    };
+
+    unsigned int VBO = 0;
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verticies), verticies, GL_STATIC_DRAW);
+
+    unsigned int VAO = 0;
+    glGenVertexArrays(1, &VAO);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0); 
+
+    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+    glCompileShader(vertexShader);
+
+    int  success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+
+    if(!success) {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
+    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if(!success) {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    
+    unsigned int shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if(!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
+    glUseProgram(shaderProgram);
+    glBindVertexArray(VAO);
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);  
+}
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     SDL_Window* window = SDL_CreateWindow("Learn OpenGL", WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
@@ -31,6 +103,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         std::cout << "Failed to load glad";
         return SDL_APP_FAILURE;
     }
+
+    unsigned int VAO, shaderProgram;
+    createTriangle();
     
     glViewport(0, 0, 800, 600);
     *appstate = new AppState {
@@ -49,8 +124,11 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         as->app_quit = SDL_APP_SUCCESS;
     }
 
+
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 
     SDL_GL_SwapWindow(as->window);
 
